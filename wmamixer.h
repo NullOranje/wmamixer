@@ -107,6 +107,7 @@ int text_counter = 0;
 int curchannel = 0;
 int curleft;
 int curright;
+int curmute;
 
 // For buttons
 int btnstate = 0;

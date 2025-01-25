@@ -418,6 +418,13 @@ static int convert_prange(long val, long min, long max) {
     return tmp;
 }
 
+int Mixer_get_muted(int current) {
+    struct Selem *selem = selems[current];
+    int muted;
+    snd_mixer_selem_get_playback_switch(selem->elem, SND_MIXER_SCHN_FRONT_LEFT, &muted);
+    return !muted;
+}
+
 int Mixer_get_volume(int current, int channelIndex) {
     struct Selem *selem = selems[current];
     long raw;
@@ -464,6 +471,10 @@ int Mixer_read_left(int current) {
 
 int Mixer_read_right(int current) {
     return Mixer_get_volume(current, 1);
+}
+
+int Mixer_read_mute(int current) {
+    return Mixer_get_muted(current);
 }
 
 void Mixer_destroy(struct Mixer *mixer) {
@@ -661,12 +672,20 @@ void scanArgs(int argc, char **argv) {
 void checkVol(bool forced) {
     int nl = Mixer_read_left(curchannel);
     int nr = Mixer_read_right(curchannel);
+    int nm = Mixer_read_mute(curchannel);
     if (forced) {
         curleft = nl;
         curright = nr;
+        curmute = nm;
         update();
         repaint();
     } else {
+        if (nm != curmute) {
+            curmute = nm;
+            update();
+            repaint();
+        }
+
         if (nl != curleft || nr != curright) {
             if (nl != curleft) {
                 curleft = nl;
@@ -776,7 +795,11 @@ void repaint() {
 }
 
 void update() {
-    drawText(selems[curchannel]->name);
+    if (curmute) {
+        drawText("mute");
+    } else {
+        drawText(selems[curchannel]->name);
+    }
 
     XCopyArea(d_display, pm_icon, pm_disp, gc_gc,
             selems[curchannel]->iconIndex * 26, 0, 26, 24, 5, 19);
@@ -813,6 +836,8 @@ void drawText(char *text) {
 }
 
 void drawVolLevel() {
+    if (curmute) return;
+
     int i;
     int digits[4];
 
